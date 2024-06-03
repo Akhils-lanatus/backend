@@ -69,7 +69,7 @@ const userRegister = async (req, res) => {
     if (!avatar) {
       return res.status(400).json({
         success: false,
-        message: "Avatar is Required",
+        message: "Error while uploading avatar",
       });
     }
 
@@ -255,7 +255,6 @@ const refreshAccessToken = async (req, res) => {
         message: "Access token refreshed",
       });
   } catch (error) {
-    console.log(error);
     return res.status(401).json({
       success: false,
       message: error?.message || "Invalid refresh token",
@@ -263,4 +262,169 @@ const refreshAccessToken = async (req, res) => {
   }
 };
 
-export { userRegister, userLogin, userLogout, refreshAccessToken };
+const changeCurrentPassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All Fields Are Required",
+      });
+    }
+    const user = await User.findById(req.user?._id);
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+    if (!isPasswordCorrect) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid Old Password",
+      });
+    }
+
+    user.password = newPassword;
+    await user.save({ validateBeforeSave: false });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password Changed Successfully",
+    });
+  } catch (error) {
+    res.status((error.code < 500 && error.code) || 500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+};
+
+const updateAccountDetails = async (req, res) => {
+  try {
+    const { fullName, email } = req.body;
+    if (!fullName || !email) {
+      return res.status(400).json({
+        success: false,
+        message: "All Fields Are Required",
+      });
+    }
+
+    const existingEmail = await User.findOne({ email });
+
+    if (existingEmail) {
+      return res.status(409).json({
+        success: false,
+        message: "Email Already Taken",
+      });
+    }
+
+    const emailRegex = /^([a-zA-Z0-9]{6,})@[a-zA-Z]{3,}\.[a-z]{2,10}$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Email Format",
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user?._id,
+      {
+        $set: { fullName, email },
+      },
+      { new: true }
+    ).select("-password -refreshToken");
+
+    return res.status(200).json({
+      success: true,
+      user,
+      message: "Accout Details Updated Successfully",
+    });
+  } catch (error) {
+    res.status((error.code < 500 && error.code) || 500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+};
+
+const updateUserAvatar = async (req, res) => {
+  try {
+    const avatarLocalPath = req.file?.path;
+    if (!avatarLocalPath) {
+      return res.status(400).json({
+        success: false,
+        message: "Avatar file is missing",
+      });
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    if (!avatar.url) {
+      return res.status(400).json({
+        success: false,
+        message: "Error while uploading avatar",
+      });
+    }
+
+    await User.findByIdAndUpdate(
+      req.user?._id,
+      { $set: { avatar: avatar?.url } },
+      { new: true }
+    ).select("-password -refreshToken");
+
+    return res.status(200).json({
+      success: true,
+      message: "Avatar Updated Successfully",
+    });
+  } catch (error) {
+    res.status((error.code < 500 && error.code) || 500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+};
+const updateUserCoverImage = async (req, res) => {
+  try {
+    const coverImageLocalPath = req.file?.path;
+    if (!coverImageLocalPath) {
+      return res.status(400).json({
+        success: false,
+        message: "Cover Image file is missing",
+      });
+    }
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    if (!coverImage.url) {
+      return res.status(400).json({
+        success: false,
+        message: "Error while uploading cover image",
+      });
+    }
+
+    await User.findByIdAndUpdate(
+      req.user?._id,
+      { $set: { coverImage: coverImage?.url } },
+      { new: true }
+    ).select("-password -refreshToken");
+
+    return res.status(200).json({
+      success: true,
+      message: "Cover Image Updated Successfully",
+    });
+  } catch (error) {
+    res.status((error.code < 500 && error.code) || 500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+};
+// res.status((error.code < 500 && error.code) || 500).json({
+//   success: false,
+//   message: error.message || "Internal Server Error",
+// });
+export {
+  userRegister,
+  userLogin,
+  userLogout,
+  refreshAccessToken,
+  changeCurrentPassword,
+  updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImage,
+};
