@@ -27,4 +27,25 @@ const uploadOnCloudinary = async (localFilePath) => {
   }
 };
 
-export { uploadOnCloudinary };
+const deleteOldFileFromCloudinary = async (localFilePath) => {
+  try {
+    if (!localFilePath) return null;
+    let splittedUrl = localFilePath.split("/");
+    let folderName = splittedUrl[splittedUrl.length - 2];
+    const filePath = splittedUrl[splittedUrl.length - 1];
+
+    const lastDotIndex = filePath.lastIndexOf(".");
+    const fileNameWithoutExtension =
+      lastDotIndex !== -1 ? filePath.substring(0, lastDotIndex) : filePath;
+    const response = await cloudinary.uploader.destroy(
+      `${folderName}/${fileNameWithoutExtension}`
+    );
+
+    return response;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+};
+
+export { uploadOnCloudinary, deleteOldFileFromCloudinary };
