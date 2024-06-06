@@ -8,7 +8,6 @@ const app = express();
 //config dotenv
 dotenv.config();
 
-//middlewares
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
